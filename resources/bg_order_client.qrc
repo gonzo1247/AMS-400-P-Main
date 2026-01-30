@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>construction.svg</file>
+    <file>imageres_98.ico</file>
+    <file>imageres_6202.ico</file>
+    <file>instandhaltung.ico</file>
+    <file>login-dial-pad-finger-password.svg</file>
+    <file>order_system_icon.ico</file>
+    <file>order_sytem_icon_alternate.ico</file>
+    <file>people.svg</file>
+    <file>Project1.png</file>
+    <file>Project2.png</file>
+    <file>user-login.svg</file>
+    <file>warning.svg</file>
+    <file>construction.svg</file>
+    <file>app-drawer-character-change.svg</file>
+    <file>database-mysql.svg</file>
+  </qresource>
+</RCC>

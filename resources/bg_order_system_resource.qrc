@@ -1,0 +1,32 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icon/imageres_98.ico</file>
+        <file>icon/imageres_6202.ico</file>
+        <file>icon/order_system_icon.ico</file>
+        <file>icon/order_sytem_icon_alternate.ico</file>
+        <file>icon/instandhaltung.ico</file>
+        <file>icon/construction.svg</file>
+        <file>icon/warning.svg</file>
+        <file>icon/mysql/database-mysql.svg</file>
+        <file>icon/app-drawer-character-change.svg</file>
+        <file>icon/people.svg</file>
+        <file>icon/login-dial-pad-finger-password.svg</file>
+        <file>icon/user-login.svg</file>
+    </qresource>
+    <qresource prefix="/fonts">
+        <file>fonts/Arial.otf</file>
+        <file>fonts/arial.ttf</file>
+        <file>fonts/arial_bold.ttf</file>
+        <file>fonts/arial_light.ttf</file>
+        <file>fonts/arial_narrow.ttf</file>
+        <file>fonts/BrushScriptStd.otf</file>
+        <file>fonts/HussarWoodtypeBd.otf</file>
+        <file>fonts/HussarWoodtypeBdObl.otf</file>
+        <file>fonts/HussarWoodtypeBlk.otf</file>
+        <file>fonts/HussarWoodtypeBlkObl.otf</file>
+        <file>fonts/HussarWoodtypeSeBd.otf</file>
+        <file>fonts/HussarWoodtypeSeBdObl.otf</file>
+        <file>fonts/HussarWoodtypeUltra.otf</file>
+        <file>fonts/HussarWoodtypeUltraObl.otf</file>
+    </qresource>
+</RCC>

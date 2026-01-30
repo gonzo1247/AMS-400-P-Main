@@ -1,0 +1,60 @@
+@echo off
+setlocal
+
+REM Platzhalter für den Pfad zum Repository "bg_projekt_build_info"
+REM Jeder Entwickler sollte diesen Pfad anpassen, um auf die "AMS/build_number.txt" zuzugreifen.
+set "build_info_repo_path=H:\Entwicklung\bg_projekt_build_info"
+
+REM In das Verzeichnis wechseln, in dem die Datei "build_number.txt" gespeichert ist
+pushd %build_info_repo_path%\AMS
+
+REM Pull, um die aktuelle Version der Datei zu bekommen
+git pull
+
+REM Lese aktuelle Build-Nummer aus der Datei build_number.txt
+set /p BUILD_NUMBER=<build_number.txt
+set /a BUILD_NUMBER+=1
+
+REM Update die Build-Nummer in der Datei build_number.txt
+echo %BUILD_NUMBER% > build_number.txt
+
+REM Commit und Push der aktualisierten Datei
+git add build_number.txt
+git commit -m "Update Build Number to %BUILD_NUMBER%"
+git push
+
+REM Zurück in das ursprüngliche Verzeichnis wechseln
+popd
+
+REM Relativer Pfad zur Header-Datei
+REM Wir gehen davon aus, dass das Batch-Skript im Ordner "buildversion" liegt
+REM und dass "src/system/Miscellaneous" vom Projektordner aus erreichbar ist
+set "header_file_path=%~dp0..\src\system\Miscellaneous\build_version.h"
+
+REM Verzeichnis für die Header-Datei erstellen, falls es noch nicht existiert
+set "header_dir=%~dp0..\src\system\Miscellaneous"
+
+if not exist "%header_dir%" (
+    mkdir "%header_dir%"
+)
+
+REM Erstelle oder aktualisiere die Header-Datei im Projektordner
+(
+echo #ifndef BUILD_VERSION_H
+echo #define BUILD_VERSION_H
+echo // Automatically generated build version
+echo #define BUILD_VERSION %BUILD_NUMBER%
+echo #endif // BUILD_VERSION_H
+) > "%header_file_path%"
+
+REM Pfad zur information.rc
+set "rc_file_path=%~dp0..\src\information.rc"
+
+REM Pfad zur PowerShell-Datei
+set "ps_script_path=%~dp0update_rc.ps1"
+
+REM Versionsnummern in information.rc mit PowerShell aktualisieren
+%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File "%ps_script_path%" -rcFilePath "%rc_file_path%" -buildNumber %BUILD_NUMBER%
+
+REM End
+endlocal

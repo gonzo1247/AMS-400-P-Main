@@ -1,0 +1,5 @@
+After new clone use this commands with git bash:
+git update-index --assume-unchanged src/system/Miscellaneous/build_version.h
+
+
+Rename "update_build_number.bat.dist" and set Path in "set "build_info_repo_path=H:\Entwicklung\bg_projekt_build_info" " to your correct repo Path. Don't touch more!

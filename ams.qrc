@@ -1,0 +1,14 @@
+<RCC>
+  <qresource prefix="Styles">
+    <file>resources/Styles/dark.json</file>
+    <file>resources/Styles/light.json</file>
+  </qresource>
+  <qresource prefix="logos">
+    <file>resources/logos/Bauerngut_Logo_klein.png</file>
+  </qresource>
+  <qresource prefix="icons">
+    <file>resources/icons/AMS4.ico</file>
+    <file>resources/icons/AMS4.png</file>
+    <file>resources/icons/AMS4-klein.png</file>
+  </qresource>
+</RCC>

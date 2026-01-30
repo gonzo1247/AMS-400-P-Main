@@ -1,0 +1,4 @@
+Main: 34; 40; 49
+Second 49; 54; 63
+Text 238; 238; 238
+Buttons and Co. 118; 171; 174

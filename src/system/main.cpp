@@ -58,6 +58,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -80,6 +81,7 @@
 #include "FileKeyProvider.h"
 #include "MySQLPreparedStatements.h"
 #include "WinStackTrace.h"
+#include "ShutdownManager.h"
 
 void LoadAndStartSQL();
 
@@ -113,6 +115,8 @@ int main(int argc, char* argv[])
     QCoreApplication::setApplicationName("AMS");
 
 	Logger::Init();
+	ShutdownManager::Instance().Initialize(&mApplication);
+	std::atexit([]() { ShutdownManager::Instance().OnProcessExit(); });
 
 	try
 	{
@@ -137,7 +141,9 @@ int main(int argc, char* argv[])
 		const QIcon appIcon(":/icons/resources/icons/AMS4.png");   // multi-size .ico: 16..256 px
 		mApplication.setWindowIcon(appIcon);									// default for all top-level windows
 
-		return _mainFrame->StartFrameAndProgramm(argc, argv);
+		const int result = _mainFrame->StartFrameAndProgramm(argc, argv);
+		ShutdownManager::Instance().OnMainReturning(result);
+		return result;
 	}
 	catch (const SehException& e)
 	{

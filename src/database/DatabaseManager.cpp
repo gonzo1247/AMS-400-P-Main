@@ -35,5 +35,9 @@ DiagnosticsSnapshot DatabaseManager::GetDiagnostics() const
     return pool_.GetDiagnostics();
 }
 
-} // namespace database
+void DatabaseManager::Shutdown()
+{
+    pool_.Shutdown();
+}
 
+} // namespace database

@@ -52,6 +52,13 @@ ConnectionPool::~ConnectionPool()
 
 void ConnectionPool::Configure(const PoolConfig& config)
 {
+    stopping_.store(true);
+    LOG_WARNING("ConnectionPool reconfigure requested; pausing Acquire until reconfiguration completes.");
+    cv_.notify_all();
+    maintenanceRunning_.store(false);
+    if (maintenanceThread_.joinable())
+        maintenanceThread_.join();
+
     std::lock_guard<std::mutex> lock(mutex_);
     config_ = config;
 
@@ -85,11 +92,11 @@ void ConnectionPool::Configure(const PoolConfig& config)
         InitializePool(ConnectionType::Async, config.asyncLimits, config.replica, true);
     }
 
-    maintenanceRunning_.store(false);
-    if (maintenanceThread_.joinable())
-        maintenanceThread_.join();
     maintenanceRunning_.store(true);
     maintenanceThread_ = std::thread(&ConnectionPool::MaintenanceLoop, this);
+    stopping_.store(false);
+    LOG_WARNING("ConnectionPool reconfigure completed; Acquire resumed.");
+    cv_.notify_all();
 }
 
 std::shared_ptr<DatabaseConnection> ConnectionPool::Acquire(ConnectionType type, bool preferReplica)
@@ -100,6 +107,12 @@ std::shared_ptr<DatabaseConnection> ConnectionPool::Acquire(ConnectionType type,
 
     while (true)
     {
+        if (stopping_.load())
+        {
+            LOG_WARNING("ConnectionPool Acquire aborted: pool is stopping.");
+            return {};
+        }
+
         if (preferReplica && !replicaQueue.empty())
         {
             auto connection = replicaQueue.front();
@@ -121,7 +134,11 @@ std::shared_ptr<DatabaseConnection> ConnectionPool::Acquire(ConnectionType type,
             return connection;
         }
 
-        cv_.wait(lock);
+        const bool ready = cv_.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return stopping_.load() || !primaryQueue.empty() || !replicaQueue.empty();
+        });
+        if (!ready)
+            LOG_WARNING("ConnectionPool Acquire still waiting for an available connection.");
     }
 }
 
@@ -152,6 +169,11 @@ CancellationToken ConnectionPool::SubmitAsync(ConnectionType type, std::function
     return asyncExecutor_.Submit(
         [this, task = std::move(task), preferReplica, type]() {
             auto connection = Acquire(type, preferReplica && config_.useReplicaForReads);
+            if (!connection)
+            {
+                LOG_WARNING("Async query skipped because no connection was available.");
+                return;
+            }
             try
             {
                 task(connection);
@@ -170,12 +192,17 @@ void ConnectionPool::StartMaintenance()
     bool expected = false;
     if (maintenanceRunning_.compare_exchange_strong(expected, true))
     {
+        stopping_.store(false);
+        cv_.notify_all();
         maintenanceThread_ = std::thread(&ConnectionPool::MaintenanceLoop, this);
     }
 }
 
 void ConnectionPool::StopMaintenance()
 {
+    stopping_.store(true);
+    LOG_WARNING("ConnectionPool stopping; releasing any waiting Acquire calls.");
+    cv_.notify_all();
     bool expected = true;
     if (maintenanceRunning_.compare_exchange_strong(expected, false))
     {

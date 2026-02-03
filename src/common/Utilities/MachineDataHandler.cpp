@@ -2,6 +2,7 @@
 #include "MachineDataHandler.h"
 
 #include <future>
+#include <mutex>
 #include <vector>
 #include <unordered_map>
 
@@ -54,6 +55,7 @@ void MachineDataHandler::RunWithRetry(const char* name, Fn&& fn)
 
 std::string MachineDataHandler::GetMachineLineNameByID(std::uint32_t internalID)
 {
+    std::shared_lock lock(_dataMutex);
     auto it = _machineLineById.find(internalID);
     if (it == _machineLineById.end())
         return {};
@@ -63,6 +65,7 @@ std::string MachineDataHandler::GetMachineLineNameByID(std::uint32_t internalID)
 
 std::string MachineDataHandler::GetMachineManufacturerNameByID(std::uint32_t internalID)
 {
+    std::shared_lock lock(_dataMutex);
     auto it = _machineManufacturerNameById.find(internalID);
     if (it == _machineManufacturerNameById.end())
         return {};
@@ -72,6 +75,7 @@ std::string MachineDataHandler::GetMachineManufacturerNameByID(std::uint32_t int
 
 std::string MachineDataHandler::GetMachineTypeByID(std::uint32_t internalID)
 {
+    std::shared_lock lock(_dataMutex);
     auto it = _machineTypeNameById.find(internalID);
     if (it == _machineTypeNameById.end())
         return {};
@@ -81,6 +85,7 @@ std::string MachineDataHandler::GetMachineTypeByID(std::uint32_t internalID)
 
 std::string MachineDataHandler::GetFacilityRoomByID(std::uint32_t internalID)
 {
+    std::shared_lock lock(_dataMutex);
     auto it = _facilityRoomById.find(internalID);
     if (it == _facilityRoomById.end())
         return {};
@@ -90,6 +95,7 @@ std::string MachineDataHandler::GetFacilityRoomByID(std::uint32_t internalID)
 
 const std::vector<std::uint32_t>* MachineDataHandler::GetFacilityRoomIDsByLocation(CompanyLocations cl) const
 {
+    std::shared_lock lock(_dataMutex);
     auto it = _facilityRoomIdsByLocation.find(cl);
     if (it == _facilityRoomIdsByLocation.end())
         return nullptr;
@@ -99,6 +105,7 @@ const std::vector<std::uint32_t>* MachineDataHandler::GetFacilityRoomIDsByLocati
 
 const std::vector<std::uint32_t>* MachineDataHandler::GetMachineLineIDsByLocation(CompanyLocations cl) const
 {
+    std::shared_lock lock(_dataMutex);
     auto it = _machineLineIdsByLocation.find(cl);
     if (it == _machineLineIdsByLocation.end())
         return nullptr;
@@ -158,8 +165,11 @@ void MachineDataHandler::LoadMachineLine()
         byId.emplace(lineData.id, std::move(lineData));
     }
 
-    _machineLineById = std::move(byId);
-    _machineLineIdsByLocation = std::move(idsByLoc);
+    {
+        std::unique_lock lock(_dataMutex);
+        _machineLineById = std::move(byId);
+        _machineLineIdsByLocation = std::move(idsByLoc);
+    }
 }
 
 void MachineDataHandler::LoadMachineManufacturer()
@@ -194,8 +204,11 @@ void MachineDataHandler::LoadMachineManufacturer()
         data.push_back(std::move(m));
     }
 
-    _machineManufacturerData = std::move(data);
-    _machineManufacturerNameById = std::move(nameById);
+    {
+        std::unique_lock lock(_dataMutex);
+        _machineManufacturerData = std::move(data);
+        _machineManufacturerNameById = std::move(nameById);
+    }
 }
 
 void MachineDataHandler::LoadMachineType()
@@ -230,8 +243,11 @@ void MachineDataHandler::LoadMachineType()
         data.push_back(std::move(t));
     }
 
-    _machineTypeData = std::move(data);
-    _machineTypeNameById = std::move(nameById);
+    {
+        std::unique_lock lock(_dataMutex);
+        _machineTypeData = std::move(data);
+        _machineTypeNameById = std::move(nameById);
+    }
 }
 
 void MachineDataHandler::LoadFacilityRoom()
@@ -267,8 +283,11 @@ void MachineDataHandler::LoadFacilityRoom()
         byId.emplace(roomData.id, std::move(roomData));
     }
 
-    _facilityRoomById = std::move(byId);
-    _facilityRoomIdsByLocation = std::move(idsByLoc);
+    {
+        std::unique_lock lock(_dataMutex);
+        _facilityRoomById = std::move(byId);
+        _facilityRoomIdsByLocation = std::move(idsByLoc);
+    }
 }
 
 void MachineDataHandler::WaitUntilReady()

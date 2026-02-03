@@ -83,6 +83,7 @@ private:
     AsyncExecutor asyncExecutor_;
 
     std::atomic<bool> maintenanceRunning_;
+    std::atomic<bool> stopping_{false};
     std::thread maintenanceThread_;
     std::condition_variable maintenanceCv_;
     std::mutex maintenanceMutex_;

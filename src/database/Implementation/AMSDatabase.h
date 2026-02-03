@@ -65,7 +65,8 @@ enum class AMSPreparedStatement : std::uint32_t
     DB_EI_UPDATE_EMPLOYEE_BY_ID,
     DB_EI_DELETE_EMPLOYEE_BY_ID,
 
-    // machine list
+    // machine_list ML
+    DB_ML_INSERT_NEW_MACHINE,
     DB_ML_SELECT_ALL_MACHINES,
     DB_ML_SELECT_MACHINE_BY_ID,
 

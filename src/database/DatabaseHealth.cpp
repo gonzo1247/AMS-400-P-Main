@@ -1,30 +1,30 @@
 #include "DatabaseHealth.h"
 
-#include <string>
+#include "SettingsManager.h"
+#include "DatabaseConnection.h"
 
 namespace database
 {
     namespace
     {
 
-        template <typename Guard>
-        bool CheckDatabaseReachable(std::string_view label)
+        bool CheckDatabaseReachable(const MySQLSettings& settings)
         {
-            Guard guard(ConnectionType::Sync, false, std::string(label) + "-health-check");
-            if (!guard)
+            if (!settings.isActive)
                 return false;
 
-            if (!guard->IsConnected() && !guard->Connect())
+            DatabaseConnection connection(settings, ConnectionType::Sync, false);
+            if (!connection.Connect())
                 return false;
 
-            return guard->Ping();
+            return connection.Ping();
         }
 
     }  // namespace
 
-    bool ArePrimaryDatabasesReachable()
+    bool AreDatabasesReachable(const MySQLSettings& imsSettings, const MySQLSettings& amsSettings)
     {
-        return CheckDatabaseReachable<ConnectionGuardIMS>("IMS") && CheckDatabaseReachable<ConnectionGuardAMS>("AMS");
+        return CheckDatabaseReachable(imsSettings) && CheckDatabaseReachable(amsSettings);
     }
 
 }  // namespace database

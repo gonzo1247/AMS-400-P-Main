@@ -836,7 +836,7 @@ inline QColor GetTicketStatusColor(TicketStatus s)
         case TicketStatus::TICKET_STATUS_IN_PROGRESS:
             return QColor(241, 196, 15);  // yellow
         case TicketStatus::TICKET_STATUS_SERVICE_SCHEDULED:
-            return QColor(155, 89, 182);  // purple
+            return QColor(221, 214, 243); //
         case TicketStatus::TICKET_STATUS_WAITING_FOR_PARTS:
             return QColor(230, 126, 34);  // orange
         case TicketStatus::TICKET_STATUS_WAITING_FOR_PRODUCTION_RESPONSE:

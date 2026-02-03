@@ -14,6 +14,7 @@ public:
     [[nodiscard]] std::unordered_map<std::int32_t, MachineInformation> GetMachineDataMap() const;
     [[nodiscard]] std::vector<MachineInformation> GetMachineDataByCostUnitID(std::uint16_t costUnitID) const;
     void UpdateCachedMachine(const MachineInformation& updated);
+    void AddNewMachineToCache(const MachineInformation& newMachine);
 
 private:
 

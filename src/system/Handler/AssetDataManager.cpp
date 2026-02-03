@@ -5,6 +5,8 @@
 #include "ConnectionGuard.h"
 
 #include <QCompleter>
+#include <algorithm>
+#include <ranges>
 
 AssetDataManager::AssetDataManager() {}
 
@@ -355,88 +357,256 @@ QString AssetDataManager::GetRoomDeleteBlockReason(std::uint32_t /*id*/)
     return TranslateText::translate("AssetDataManager", "Block Reason 0x03AD8");
 }
 
-void AssetDataManager::FillRoomCombobox(QComboBox* cb, CompanyLocations cl /*= CompanyLocations::CL_BBG*/)
+std::vector<AssetDataManager::ComboEntry> AssetDataManager::GetRoomsForLocation(CompanyLocations cl)
 {
-    auto data = LoadRoomData(cl);
+    const auto rooms = LoadRoomData(cl);
 
-    if (!cb)
-        return;
+    std::vector<ComboEntry> out;
+    out.reserve(rooms.size());
 
-    cb->clear();
-    QStringList itemList;
-
-    for (const auto& room : data)
+    for (const auto& r : rooms)
     {
-        cb->addItem(QString::fromStdString(room.name), room.id);
-        itemList.append(QString::fromStdString(room.name));
+        out.push_back({r.id, r.name});
     }
 
-    auto* completer = new QCompleter(itemList, cb);
-    completer->setCaseSensitivity(Qt::CaseInsensitive);
-    cb->setCompleter(completer);
+    return out;
 }
 
-void AssetDataManager::FillLineCombobox(QComboBox* cb, CompanyLocations cl /*= CompanyLocations::CL_BBG*/)
+std::vector<AssetDataManager::ComboEntry> AssetDataManager::GetLineForBox(CompanyLocations cl /*= CompanyLocations::CL_BBG*/)
 {
     auto data = LoadLineData(cl);
 
-    if (!cb)
-        return;
+    std::vector<ComboEntry> out;
+    out.reserve(data.size());
 
-    cb->clear();
-    QStringList itemList;
-
-    for (const auto& room : data)
+    for (const auto& r : data)
     {
-        cb->addItem(QString::fromStdString(room.name), room.id);
-        itemList.append(QString::fromStdString(room.name));
+        out.push_back({r.id, r.name});
     }
 
-    auto* completer = new QCompleter(itemList, cb);
-    completer->setCaseSensitivity(Qt::CaseInsensitive);
-    cb->setCompleter(completer);
+    return out;
 }
 
-void AssetDataManager::FillManufacturerCombobox(QComboBox* cb)
+std::vector<AssetDataManager::ComboEntry> AssetDataManager::GetManufacturerForBox()
 {
     auto data = LoadManufacturerData();
 
-    if (!cb)
-        return;
-
-    cb->clear();
-    QStringList itemList;
-
-    for (const auto& room : data)
+    std::vector<ComboEntry> out;
+    out.reserve(data.size());
+    
+    for (const auto& r : data)
     {
-        cb->addItem(QString::fromStdString(room.name), room.id);
-        itemList.append(QString::fromStdString(room.name));
+        out.push_back({r.id, r.name});
     }
 
-    auto* completer = new QCompleter(itemList, cb);
-    completer->setCaseSensitivity(Qt::CaseInsensitive);
-    cb->setCompleter(completer);
+    return out;
 }
 
-void AssetDataManager::FillTypeCombobox(QComboBox* cb)
+std::vector<AssetDataManager::ComboEntry> AssetDataManager::GetTypeForBox()
 {
-    auto data = LoadTypeData();
+    auto data = LoadManufacturerData();
+    std::vector<ComboEntry> out;
+    out.reserve(data.size());
 
-    if (!cb)
-        return;
-
-    cb->clear();
-    QStringList itemList;
-
-    for (const auto& room : data)
+    for (const auto& r : data)
     {
-        cb->addItem(QString::fromStdString(room.name), room.id);
-        itemList.append(QString::fromStdString(room.name));
+        out.push_back({r.id, r.name});
     }
 
-    auto* completer = new QCompleter(itemList, cb);
-    completer->setCaseSensitivity(Qt::CaseInsensitive);
-    cb->setCompleter(completer);
+    return out;
+}
+
+AssetDataManager::AddMachineResult AssetDataManager::AddNewMachine(const MachineInformation& machineInfo)
+{
+    if (machineInfo.empty())
+        return {.id = 0, .ok = false };
+
+    // INSERT INTO machine_line (CostUnitID, MachineTypeID, LineID, ManufacturerID, MachineName,
+    // MachineNumber, ManufacturerMachineNumber, RoomNumber, MoreInformation, locationID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    AddMachineResult result{};
+
+    ConnectionGuardAMS connection(ConnectionType::Sync);
+    auto stmt = connection->GetPreparedStatement(AMSPreparedStatement::DB_ML_INSERT_NEW_MACHINE);
+
+    stmt->SetUInt(0, machineInfo.CostUnitID);
+    stmt->SetUInt(1, machineInfo.MachineTypeID);
+    stmt->SetUInt(2, machineInfo.LineID);
+    stmt->SetUInt(3, machineInfo.ManufacturerID);
+    stmt->SetString(4, machineInfo.MachineName);
+    stmt->SetString(5, machineInfo.MachineNumber);
+    stmt->SetString(6, machineInfo.ManufacturerMachineNumber);
+    stmt->SetUInt(7, machineInfo.RoomID);
+    stmt->SetString(8, machineInfo.MoreInformation);
+    stmt->SetUInt(9, machineInfo.locationID);
+
+    result.ok = connection->ExecutePreparedInsert(*stmt);
+    result.id = connection->GetLastInsertId();
+
+    return result;
+}
+
+AssetDataManager::SqlUpdate AssetDataManager::BuildMachineUpdateSql(int machineId, const MachineInformation& info,
+                                                                    const ChangeTracker<MachineField>& tracker)
+{
+    SqlUpdate out;
+
+    const auto dirty = tracker.GetDirtyFields();
+    if (dirty.isEmpty())
+        return out;
+
+    std::string setPart;
+    std::vector<QVariant> params;
+
+    auto add = [&](MachineField field, const QVariant& value)
+    {
+        const char* col = MachineFieldToColumn(field);
+        if (col[0] == '\0')
+            return;
+
+        if (!setPart.empty())
+            setPart += ", ";
+
+        setPart += col;
+        setPart += " = ?";
+
+        params.push_back(value);
+    };
+
+    for (const auto& field : dirty)
+    {
+        switch (field)
+        {
+            case MachineField::Name:
+                add(field, QString::fromStdString(info.MachineName));
+                break;
+            case MachineField::Number:
+                add(field, QString::fromStdString(info.MachineNumber));
+                break;
+            case MachineField::ManufacturerNumber:
+                add(field, QString::fromStdString(info.ManufacturerMachineNumber));
+                break;
+
+            case MachineField::CostUnitId:
+                add(field, info.CostUnitID);
+                break;
+            case MachineField::MachineTypeId:
+                add(field, info.MachineTypeID);
+                break;
+            case MachineField::MachineLineId:
+                add(field, info.LineID);
+                break;
+            case MachineField::ManufacturerId:
+                add(field, info.ManufacturerID);
+                break;
+
+            case MachineField::RoomId:
+                add(field, info.RoomID);
+                break;
+            case MachineField::Location:
+                add(field, info.locationID);
+                break;
+            case MachineField::Info:
+                add(field, QString::fromStdString(info.MoreInformation));
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    out.sql = "UPDATE machine_list SET " + setPart + " WHERE ID = ?";
+    out.params = std::move(params);
+    out.params.emplace_back(machineId);
+
+    return out;
+}
+
+bool AssetDataManager::UpdateMachineData(const MachineInformation& info, const ChangeTracker<MachineField>& tracker)
+{
+    auto sqlUpdate = BuildMachineUpdateSql(info.ID, info, tracker);
+    if (sqlUpdate.sql.empty())
+        return false;
+
+    ConnectionGuardAMS connection(ConnectionType::Sync);
+
+    auto stmt = connection->GetStatementRaw(sqlUpdate.sql);
+
+    for (std::size_t i = 0; i < sqlUpdate.params.size(); ++i)
+    {
+        stmt->SetQVariant(i, sqlUpdate.params[i]);
+    }
+
+    return connection->ExecutePreparedUpdate(*stmt);
+}
+
+const char* AssetDataManager::MachineFieldToColumn(MachineField field)
+{
+    switch (field)
+    {
+        case MachineField::Name:
+            return "MachineName";
+        case MachineField::Number:
+            return "MachineNumber";
+        case MachineField::ManufacturerNumber:
+            return "ManufacturerMachineNumber";
+        case MachineField::CostUnitId:
+            return "CostUnitID";
+        case MachineField::MachineTypeId:
+            return "MachineTypeID";
+        case MachineField::MachineLineId:
+            return "LineID";
+        case MachineField::ManufacturerId:
+            return "ManufacturerID";
+        case MachineField::RoomId:
+            return "RoomNumber";
+        case MachineField::Location:
+            return "location";
+        case MachineField::Info:
+            return "MoreInformation";
+        default:
+            return "";
+    }
+}
+
+AssetDataManager::MachineValidationResult AssetDataManager::Validate(const MachineInformation& m) noexcept
+{
+    // Limits are domain rules
+    constexpr std::size_t NAME_MAX = 200;
+    constexpr std::size_t NUM_MAX = 50;
+    constexpr std::size_t INFO_MAX = 255;
+
+    const std::string name = TrimCopy(m.MachineName);
+    if (name.empty())
+        return {MachineValidationError::NameEmpty, 0};
+    if (name.size() > NAME_MAX)
+        return {MachineValidationError::NameTooLong, NAME_MAX};
+
+    const std::string number = TrimCopy(m.MachineNumber);
+    if (number.size() > NUM_MAX)
+        return {MachineValidationError::NumberTooLong, NUM_MAX};
+
+    const std::string manNum = TrimCopy(m.ManufacturerMachineNumber);
+    if (manNum.size() > NUM_MAX)
+        return {MachineValidationError::ManufacturerNumberTooLong, NUM_MAX};
+
+    // Info: usually not trimmed; if you want, trim as well
+    if (m.MoreInformation.size() > INFO_MAX)
+        return {MachineValidationError::InfoTooLong, INFO_MAX};
+
+    return {};
+}
+
+std::string AssetDataManager::TrimCopy(const std::string& s)
+{
+    auto isSpace = [](unsigned char c) { return std::isspace(c) != 0; };
+
+    auto begin = std::ranges::find_if_not(s, isSpace);
+    auto end = std::ranges::find_if_not(std::ranges::reverse_view(s), isSpace).base();
+
+    if (begin >= end)
+        return {};
+
+    return std::string(begin, end);
 }
 
 std::vector<AssetDataManager::MachineData> AssetDataManager::LoadRoomData(CompanyLocations cl)

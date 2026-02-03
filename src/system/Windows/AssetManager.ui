@@ -57,7 +57,7 @@
        <item>
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
-          <number>4</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="tab_list">
           <attribute name="title">
@@ -90,6 +90,13 @@
               <widget class="QPushButton" name="pb_listReset">
                <property name="text">
                 <string>Reset</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QPushButton" name="pb_newMachine">
+               <property name="text">
+                <string>New</string>
                </property>
               </widget>
              </item>

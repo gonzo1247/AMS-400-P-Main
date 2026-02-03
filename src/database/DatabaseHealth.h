@@ -1,11 +1,8 @@
-#pragma once
-
-#include <string_view>
-
-#include "ConnectionGuard.h"
+#include "SettingsManager.h"
 
 namespace database
 {
-    bool ArePrimaryDatabasesReachable();
+
+    bool AreDatabasesReachable(const MySQLSettings& imsSettings, const MySQLSettings& amsSettings);
 
 }  // namespace database

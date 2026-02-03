@@ -364,6 +364,51 @@ bool MachineListTableModel::ApplyMachinePatch(const MachineInformation& updated)
     return true;
 }
 
+bool MachineListTableModel::AddMachine(const MachineInformation& machine)
+{
+    if (machine.ID <= 0)
+        return false;
+
+    if (_allIndexById.contains(machine.ID))
+        return false;
+
+    // 1) Add to all rows
+    const std::size_t allIdx = _allRows.size();
+    _allRows.push_back(machine);
+    _allIndexById[machine.ID] = allIdx;
+
+    // 2) Visible?
+    const bool nowVisible = IsVisibleByCurrentFilter(machine);
+
+    // If sort is enabled OR you don't want to compute insertion index, rebuild
+    if (_lastSortColumn >= 0)
+    {
+        rebuildRows();
+        return true;
+    }
+
+    if (!nowVisible)
+        return true;
+
+    // 3) Insert into visible rows (append if no active sort)
+    const int insertRow = static_cast<int>(_rows.size());
+
+    beginInsertRows(QModelIndex(), insertRow, insertRow);
+    _rows.push_back(machine);
+    _visibleIndexById[machine.ID] = static_cast<std::size_t>(insertRow);
+    endInsertRows();
+
+    return true;
+}
+
+bool MachineListTableModel::UpsertMachine(const MachineInformation& machine)
+{
+    if (_allIndexById.contains(machine.ID))
+        return ApplyMachinePatch(machine);
+
+    return AddMachine(machine);
+}
+
 void MachineListTableModel::rebuildRows()
 {
     beginResetModel();

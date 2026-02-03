@@ -5,6 +5,7 @@
 #include "ChangeTracker.h"
 #include "LookupTableModel.h"
 #include "DatabaseDefines.h"
+#include "AssetDataManager.h"
 #include "ui_AssetManager.h"
 
 class CostUnitDataHandler;
@@ -13,7 +14,7 @@ class ComboBoxDataLoader;
 class MachineListTableModel;
 class MachineListManager;
 class RoomTableModel;
-class AssetDataManager;
+struct MachineValidationResult;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class AssetManagerClass; };
@@ -31,11 +32,6 @@ public:
         ASSET_PAGE_LINE = 2,  // edit page for Line, Type and Manufacturer
     };
 
-    struct SqlUpdate
-    {
-        std::string sql;
-        std::vector<QVariant> params;
-    };
 
 	AssetManager(QWidget *parent = nullptr);
 	~AssetManager();
@@ -82,37 +78,17 @@ private:
 
     void UpdateMachineUiState();
     bool ValidateMachineDirtyFields(QString& errorText);
-    SqlUpdate BuildMachineUpdateSql(int machineId, const ChangeTracker<MachineField>& tracker);
     bool ConfirmDiscardMachineChanges();
 
-    static const char* MachineFieldToColumn(MachineField field)
-    {
-        switch (field)
-        {
-            case MachineField::Name:
-                return "MachineName";
-            case MachineField::Number:
-                return "MachineNumber";
-            case MachineField::ManufacturerNumber:
-                return "ManufacturerMachineNumber";
-            case MachineField::CostUnitId:
-                return "CostUnitID";
-            case MachineField::MachineTypeId:
-                return "MachineTypeID";
-            case MachineField::MachineLineId:
-                return "LineID";
-            case MachineField::ManufacturerId:
-                return "ManufacturerID";
-            case MachineField::RoomId:
-                return "RoomNumber";
-            case MachineField::Location:
-                return "location";
-            case MachineField::Info:
-                return "MoreInformation";
-            default:
-                return "";
-        }
-    }
+    void ClearFieldsForMachine();
+    void ResetDirtyStatus();
+    QString ToUiMessage(AssetDataManager::MachineValidationResult r, QObject* ctx);
+
+    MachineInformation CollectMachineData();
+
+    // Combo Box Fillers
+    void FillComboBoxWithCompleter(QComboBox* cb, const std::vector<AssetDataManager::ComboEntry>& items);
+    void FillMachineListComboBox(CompanyLocations cl = CompanyLocations::CL_BBG);
 
 
 	Ui::AssetManagerClass *ui;
@@ -131,6 +107,8 @@ private:
     std::uint32_t _currentMachineId = 0;
 
     MachineInformation _currentMachineDetails;
+
+    bool _isNewMachine = false;
 
 private slots:
     void onPushAddMachineLine();
@@ -152,6 +130,7 @@ private slots:
     void onPushBackToMainPage();
 
     void onPushSaveMachine();
+    void onPushNewMachine();
 };
 
 

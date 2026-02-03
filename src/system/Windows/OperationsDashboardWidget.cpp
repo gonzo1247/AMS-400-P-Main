@@ -302,6 +302,7 @@ void OperationsDashboardWidget::ApplyTicketViewLayout(bool tvMode)
     {
         v->setColumnHidden(8, true);
         v->setColumnHidden(12, true);
+        v->setColumnHidden(13, true);
     }
     else
     {
@@ -309,6 +310,7 @@ void OperationsDashboardWidget::ApplyTicketViewLayout(bool tvMode)
         v->setColumnHidden(8, false);
         v->setColumnHidden(9, false);
         v->setColumnHidden(12, false);
+        v->setColumnHidden(13, false);
     }
 
     const int titleCol = 1;

@@ -47,6 +47,7 @@ ShowTicketWidget::ShowTicketWidget(QWidget *parent) : QWidget(parent), ui(new Ui
                 }
 
 
+
                 _ticketDetailWidget->LoadAndFillData(*id);
                 _ticketDetailWidget->show();
             });
@@ -63,7 +64,8 @@ ShowTicketWidget::ShowTicketWidget(QWidget *parent) : QWidget(parent), ui(new Ui
     connect(refreshTimer, &QTimer::timeout, this, &ShowTicketWidget::onPushManualRefreshButton);
     refreshTimer->start();
 
-    _ticketDetailWidget = new ShowTicketDetailWidget(this);
+    _ticketDetailWidget = new ShowTicketDetailWidget(nullptr);
+    _ticketDetailWidget->setWindowFlag(Qt::Window, true);
     connect(_ticketDetailWidget, &ShowTicketDetailWidget::TicketClosed, this, &ShowTicketWidget::onPushManualRefreshButton);
 }
 

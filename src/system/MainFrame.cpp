@@ -58,7 +58,7 @@ int MainFrame::StartFrameAndProgramm(int /*argc*/, char* /*argv*/[])
 	QApplication::processEvents();
 
 
-	if (!ArePrimaryDatabasesReachable())
+	if (!AreDatabasesReachable(GetSettings().getMySQLSettings(), GetSettings().getAMSMySQLSettings()))
 	{
 		updateLoadingProgress(20, "No MySQL connection found");
 		return OnlySettingsWindow();
@@ -67,13 +67,13 @@ int MainFrame::StartFrameAndProgramm(int /*argc*/, char* /*argv*/[])
 	updateLoadingProgress(25, "Check Database Version information...");
 
 	VersionCheck version;
-/*
+
 	if (!version.CheckCompatibilityWithDB(splash.get()))
 	{
 		// Close splash, open settings, do not schedule more UI work
 		splash->finish(nullptr);
 		return OnlySettingsWindow();
-	}*/
+	}
 
 	updateLoadingProgress(30, "Loading style...");
 

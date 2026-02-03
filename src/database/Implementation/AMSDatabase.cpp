@@ -155,6 +155,8 @@ PREPARE_STATEMENT(AMSPreparedStatement::DB_TICKET_OVERVIEW_SELECT,
         CONNECTION_SYNC);
 
     // machine list
+    PREPARE_STATEMENT(AMSPreparedStatement::DB_ML_INSERT_NEW_MACHINE, "INSERT INTO machine_list (CostUnitID, MachineTypeID, LineID, ManufacturerID, MachineName, MachineNumber, ManufacturerMachineNumber, "
+                    "RoomNumber, MoreInformation, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", CONNECTION_SYNC);
     PREPARE_STATEMENT(AMSPreparedStatement::DB_ML_SELECT_ALL_MACHINES,
         "SELECT ID, CostUnitID, MachineTypeID, LineID, ManufacturerID, MachineName, MachineNumber, ManufacturerMachineNumber, RoomNumber, MoreInformation, location, is_deleted, deleted_at FROM machine_list", CONNECTION_SYNC);
 

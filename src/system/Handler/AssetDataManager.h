@@ -1,8 +1,10 @@
 #pragma once
+#include "ChangeTracker.h"
 #include "LookupTableModel.h"
 #include "RoomTableModel.h"
 #include "SharedDefines.h"
 
+enum class MachineField : std::uint8_t;
 struct MachineInformation;
 
 class AssetDataManager
@@ -15,6 +17,42 @@ public:
         std::string code {}; // room_code
     };
 
+    struct AddMachineResult
+    {
+        std::uint32_t id{};
+        bool ok{};
+    };
+
+    struct SqlUpdate
+    {
+        std::string sql;
+        std::vector<QVariant> params;
+    };
+
+    struct ComboEntry
+    {
+        std::uint32_t id;
+        std::string text;
+    };
+
+    enum class MachineValidationError
+    {
+        None = 0,
+
+        NameEmpty,
+        NameTooLong,
+
+        NumberTooLong,
+        ManufacturerNumberTooLong,
+
+        InfoTooLong
+    };
+
+    struct MachineValidationResult
+    {
+        MachineValidationError error = MachineValidationError::None;
+        std::size_t limit = 0;  // for "TooLong" errors (optional)
+    };
 
     explicit AssetDataManager();
 
@@ -56,12 +94,24 @@ public:
 
 
     // Combobox Handling
-    void FillRoomCombobox(QComboBox* cb, CompanyLocations cl = CompanyLocations::CL_BBG);
-    void FillLineCombobox(QComboBox* cb, CompanyLocations cl = CompanyLocations::CL_BBG);
-    void FillManufacturerCombobox(QComboBox* cb);
-    void FillTypeCombobox(QComboBox* cb);
+    std::vector<ComboEntry> GetRoomsForLocation(CompanyLocations cl);
+    std::vector<ComboEntry> GetLineForBox(CompanyLocations cl = CompanyLocations::CL_BBG);
+    std::vector<ComboEntry> GetManufacturerForBox();
+    std::vector<ComboEntry> GetTypeForBox();
+
+    // Machine List
+    AddMachineResult AddNewMachine(const MachineInformation& machineInfo);
+
+    SqlUpdate BuildMachineUpdateSql(int machineId, const MachineInformation& info, const ChangeTracker<MachineField>& tracker);
+    bool UpdateMachineData(const MachineInformation& info, const ChangeTracker<MachineField>& tracker);
+
+    static const char* MachineFieldToColumn(MachineField field);
+
+    MachineValidationResult Validate(const MachineInformation& m) noexcept;;
 
 private:
+    static std::string TrimCopy(const std::string& s);
+
     std::vector<MachineData> LoadRoomData(CompanyLocations cl);
     std::vector<MachineData> LoadLineData(CompanyLocations cl);
     std::vector<MachineData> LoadTypeData();

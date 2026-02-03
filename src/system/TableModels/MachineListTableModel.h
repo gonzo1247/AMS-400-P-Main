@@ -36,6 +36,8 @@ class MachineListTableModel : public QAbstractTableModel
 
     bool IsVisibleByCurrentFilter(const MachineInformation& info) const;
     bool ApplyMachinePatch(const MachineInformation& updated);
+    bool AddMachine(const MachineInformation& machine);
+    bool UpsertMachine(const MachineInformation& machine);
 
    private:
     void rebuildRows();

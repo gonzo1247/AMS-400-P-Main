@@ -68,8 +68,9 @@ AssetManager::AssetManager(QWidget *parent) : QWidget(parent), ui(new Ui::AssetM
 
     {
         SetupMachineListTab();
-        connect(
-            ui->tv_list, &QTableView::doubleClicked, this,
+        TableSearchHelper::Setup(ui->tv_list, ui->le_listSearch, _machineListModel);
+        ui->pb_backMainPage->setEnabled(false);
+        connect(ui->tv_list, &QTableView::doubleClicked, this,
             [this](const QModelIndex &index)
             {
                 if (!index.isValid())
@@ -87,6 +88,7 @@ AssetManager::AssetManager(QWidget *parent) : QWidget(parent), ui(new Ui::AssetM
     connect(ui->pb_backMainPage, &QPushButton::clicked, this, &AssetManager::onPushBackToMainPage);
     connect(ui->pb_save, &QPushButton::clicked, this, &AssetManager::onPushSaveMachine);
     SetupMachineChangeTracking();
+    connect(ui->pb_newMachine, &QPushButton::clicked, this, &AssetManager::onPushNewMachine);
 }
 
 AssetManager::~AssetManager()
@@ -642,6 +644,8 @@ void AssetManager::OpenMachineListDetail(std::uint32_t id)
                 ChangeTracker<MachineField>::SuspendGuard guard(_machineTracker);
                 _currentMachineDetails = details;
 
+                ui->pb_backMainPage->setEnabled(true);
+
                 // Machine Main Data
                 ui->le_machineName->setText(QString::fromStdString(details.MachineName));
                 ui->le_machineNumber->setText(QString::fromStdString(details.MachineNumber));
@@ -649,12 +653,7 @@ void AssetManager::OpenMachineListDetail(std::uint32_t id)
 
                 auto location = details.locationID != 0 ? static_cast<CompanyLocations>(details.locationID) : CompanyLocations::CL_BBG;
 
-                _assetMgr->FillRoomCombobox(ui->cb_room, location);
-                _assetMgr->FillLineCombobox(ui->cb_machineLine, location);
-                _assetMgr->FillManufacturerCombobox(ui->cb_manufacturer);
-                _assetMgr->FillTypeCombobox(ui->cb_machineType);
-                CostUnitDataHandler::instance().FillComboBoxWithData(ui->cb_costUnit, GetSettings().getLanguage(), GetCompanyLocationsString(location));
-                ComboBoxDataLoader::ReloadAndFillCompanyLocationCombo(ui->cb_location);
+                FillMachineListComboBox(location);
 
                 // Machine Sub Data
                 SetTypeComboboxById(ui->cb_room, details.RoomID);
@@ -662,24 +661,14 @@ void AssetManager::OpenMachineListDetail(std::uint32_t id)
                 SetTypeComboboxById(ui->cb_manufacturer, details.ManufacturerID);
                 SetTypeComboboxById(ui->cb_machineType, details.MachineTypeID);
                 SetTypeComboboxById(ui->cb_costUnit, details.CostUnitID);
-                SetTypeComboboxById(ui->cb_location, static_cast<int>(details.locationID));
+                SetTypeComboboxById(ui->cb_location, static_cast<int>(location));
 
                 // Other Data
                 ui->te_information->setText(QString::fromStdString(details.MoreInformation));
 
                 ui->sw_assetManager->setCurrentIndex(static_cast<int>(AssetPages::ASSET_PAGE_LIST));
 
-                // Force-set tracker values while signals are blocked
-                _machineTracker.SetValueForced(MachineField::Name, ui->le_machineName->text());
-                _machineTracker.SetValueForced(MachineField::Number, ui->le_machineNumber->text());
-                _machineTracker.SetValueForced(MachineField::ManufacturerNumber, ui->le_manufacturerNumber->text());
-                _machineTracker.SetValueForced(MachineField::CostUnitId, ui->cb_costUnit->currentData());
-                _machineTracker.SetValueForced(MachineField::MachineTypeId, ui->cb_machineType->currentData());
-                _machineTracker.SetValueForced(MachineField::MachineLineId, ui->cb_machineLine->currentData());
-                _machineTracker.SetValueForced(MachineField::ManufacturerId, ui->cb_manufacturer->currentData());
-                _machineTracker.SetValueForced(MachineField::Info, ui->te_information->toPlainText());
-
-                _machineTracker.BeginSnapshot();
+                ResetDirtyStatus();
 
 
             },
@@ -774,82 +763,6 @@ bool AssetManager::ValidateMachineDirtyFields(QString &errorText)
     return true;
 }
 
-AssetManager::SqlUpdate AssetManager::BuildMachineUpdateSql(int machineId, const ChangeTracker<MachineField> &tracker)
-{
-    SqlUpdate out;
-
-    const auto dirty = tracker.GetDirtyFields();
-    if (dirty.isEmpty())
-        return out;
-
-    std::string setPart;
-    std::vector<QVariant> params;
-
-    auto add = [&](MachineField field, const QVariant &value)
-    {
-        const char *col = MachineFieldToColumn(field);
-        if (col[0] == '\0')
-            return;
-
-        if (!setPart.empty())
-            setPart += ", ";
-
-        setPart += col;
-        setPart += " = ?";
-
-        params.push_back(value);
-    };
-
-    for (const auto &field : dirty)
-    {
-        switch (field)
-        {
-            case MachineField::Name:
-                add(field, ui->le_machineName->text().trimmed());
-                break;
-            case MachineField::Number:
-                add(field, ui->le_machineNumber->text().trimmed());
-                break;
-            case MachineField::ManufacturerNumber:
-                add(field, ui->le_manufacturerNumber->text().trimmed());
-                break;
-
-            case MachineField::CostUnitId:
-                add(field, ui->cb_costUnit->currentData());
-                break;
-            case MachineField::MachineTypeId:
-                add(field, ui->cb_machineType->currentData());
-                break;
-            case MachineField::MachineLineId:
-                add(field, ui->cb_machineLine->currentData());
-                break;
-            case MachineField::ManufacturerId:
-                add(field, ui->cb_manufacturer->currentData());
-                break;
-
-            case MachineField::RoomId:
-                add(field, ui->cb_room->currentData());
-                break;
-            case MachineField::Location:
-                add(field, ui->cb_location->currentData());
-                break;
-
-            case MachineField::Info:
-                add(field, ui->te_information->toPlainText());
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    out.sql = "UPDATE machine_list SET " + setPart + " WHERE ID = ?";
-    out.params = std::move(params);
-    out.params.push_back(machineId);
-
-    return out;
-}
-
 bool AssetManager::ConfirmDiscardMachineChanges()
 {
     if (!_machineTracker.IsDirty())
@@ -860,6 +773,130 @@ bool AssetManager::ConfirmDiscardMachineChanges()
                              QMessageBox::Yes | QMessageBox::No);
 
     return ret == QMessageBox::Yes;
+}
+
+void AssetManager::ClearFieldsForMachine()
+{
+    ui->le_machineName->clear();
+    ui->le_machineNumber->clear();
+    ui->le_manufacturerNumber->clear();
+    ui->cb_costUnit->setCurrentIndex(-1);
+    ui->cb_machineType->setCurrentIndex(-1);
+    ui->cb_machineLine->setCurrentIndex(-1);
+    ui->cb_manufacturer->setCurrentIndex(-1);
+    ui->cb_room->setCurrentIndex(-1);
+    ui->cb_location->setCurrentIndex(-1);
+    ui->te_information->clear();
+
+    ui->lb_machineDirtyHint->clear();
+}
+
+void AssetManager::ResetDirtyStatus()
+{
+    ChangeTracker<MachineField>::SuspendGuard guard(_machineTracker);
+
+    _machineTracker.SetValueForced(MachineField::Name, ui->le_machineName->text());
+    _machineTracker.SetValueForced(MachineField::Number, ui->le_machineNumber->text());
+    _machineTracker.SetValueForced(MachineField::ManufacturerNumber, ui->le_manufacturerNumber->text());
+    _machineTracker.SetValueForced(MachineField::CostUnitId, ui->cb_costUnit->currentData());
+    _machineTracker.SetValueForced(MachineField::MachineTypeId, ui->cb_machineType->currentData());
+    _machineTracker.SetValueForced(MachineField::MachineLineId, ui->cb_machineLine->currentData());
+    _machineTracker.SetValueForced(MachineField::ManufacturerId, ui->cb_manufacturer->currentData());
+    _machineTracker.SetValueForced(MachineField::Info, ui->te_information->toPlainText());
+    _machineTracker.SetValueForced(MachineField::RoomId, ui->cb_room->currentData());
+    _machineTracker.SetValueForced(MachineField::Location, ui->cb_location->currentData());
+
+    _machineTracker.BeginSnapshot();
+}
+
+QString AssetManager::ToUiMessage(AssetDataManager::MachineValidationResult r, QObject *ctx)
+{
+    switch (r.error)
+    {
+        case AssetDataManager::MachineValidationError::None:
+            return {};
+
+        case AssetDataManager::MachineValidationError::NameEmpty:
+            return ctx->tr("Machine name must not be empty.");
+
+        case AssetDataManager::MachineValidationError::NameTooLong:
+            return ctx->tr("Machine name is too long (max %1).").arg(static_cast<int>(r.limit));
+
+        case AssetDataManager::MachineValidationError::NumberTooLong:
+            return ctx->tr("Machine number is too long (max %1).").arg(static_cast<int>(r.limit));
+
+        case AssetDataManager::MachineValidationError::ManufacturerNumberTooLong:
+            return ctx->tr("Manufacturer machine number is too long (max %1).").arg(static_cast<int>(r.limit));
+
+        case AssetDataManager::MachineValidationError::InfoTooLong:
+            return ctx->tr("More information is too long (max %1).").arg(static_cast<int>(r.limit));
+    }
+
+    // Fallback
+    return ctx->tr("Invalid machine data.");
+}
+
+MachineInformation AssetManager::CollectMachineData()
+{
+    MachineInformation info = _currentMachineDetails;
+
+    info.ID = static_cast<std::int32_t>(_currentMachineId);
+    info.MachineName = ui->le_machineName->text().trimmed().toStdString();
+    info.MachineNumber = ui->le_machineNumber->text().trimmed().toStdString();
+    info.ManufacturerMachineNumber = ui->le_manufacturerNumber->text().trimmed().toStdString();
+    info.CostUnitID = ui->cb_costUnit->currentData().toUInt();
+    info.MachineTypeID = ui->cb_machineType->currentData().toUInt();
+    info.LineID = ui->cb_machineLine->currentData().toUInt();
+    info.ManufacturerID = ui->cb_manufacturer->currentData().toUInt();
+    info.RoomID = ui->cb_room->currentData().toUInt();
+    info.locationID = ui->cb_location->currentData().toUInt();
+    info.MoreInformation = ui->te_information->toPlainText().toStdString();
+
+    return info;
+}
+
+void AssetManager::FillComboBoxWithCompleter(QComboBox *cb, const std::vector<AssetDataManager::ComboEntry> &items)
+{
+    if (!cb)
+        return;
+
+    cb->clear();
+
+    QStringList list;
+    list.reserve(static_cast<int>(items.size()));
+
+    for (const auto &it : items)
+    {
+        const QString text = QString::fromStdString(it.text);
+
+        cb->addItem(text, static_cast<int>(it.id));
+        list.append(text);
+    }
+
+    if (auto *old = cb->completer())
+        old->deleteLater();
+
+    auto *completer = new QCompleter(list, cb);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    cb->setCompleter(completer);
+}
+
+void AssetManager::FillMachineListComboBox(CompanyLocations cl /*= CompanyLocations::CL_BBG*/)
+{
+    auto rooms = _assetMgr->GetRoomsForLocation(cl);
+    FillComboBoxWithCompleter(ui->cb_room, rooms);
+
+    auto lines = _assetMgr->GetLineForBox(cl);
+    FillComboBoxWithCompleter(ui->cb_machineLine, lines);
+
+    auto manufacturer = _assetMgr->GetManufacturerForBox();
+    FillComboBoxWithCompleter(ui->cb_manufacturer, manufacturer);
+
+    auto types = _assetMgr->GetTypeForBox();
+    FillComboBoxWithCompleter(ui->cb_machineType, types);
+
+    CostUnitDataHandler::instance().FillComboBoxWithData(ui->cb_costUnit, GetSettings().getLanguage(), GetCompanyLocationsString(cl));
+    ComboBoxDataLoader::ReloadAndFillCompanyLocationCombo(ui->cb_location);
 }
 
 void AssetManager::onPushAddMachineLine()
@@ -962,82 +999,113 @@ void AssetManager::onPushRestoreRoom()
 
 void AssetManager::onPushBackToMainPage()
 {
+    if (!ConfirmDiscardMachineChanges())
+        return;
+
     ui->sw_assetManager->setCurrentIndex(static_cast<int>(AssetPages::ASSET_PAGE_MAIN));
+    ui->pb_backMainPage->setEnabled(false);
+
+    if (_isNewMachine)
+    {
+        _isNewMachine = false;
+        ClearFieldsForMachine();
+    }
 }
 
 void AssetManager::onPushSaveMachine()
 {
-    if (!_machineTracker.IsDirty())
+    if (!_isNewMachine && !_machineTracker.IsDirty())
         return;
 
-    QString error;
-    if (!ValidateMachineDirtyFields(error))
+    auto info = CollectMachineData();
+
+    const auto vr = _assetMgr->Validate(info);
+    if (vr.error != AssetDataManager::MachineValidationError::None)
     {
-        QMessageBox::warning(this, tr("Validation"), error);
-        return;
-    }
-
-    const int machineId = _currentMachineId;
-    const auto upd = BuildMachineUpdateSql(machineId, _machineTracker);
-
-    if (upd.sql.empty())
-        return;
-
-    ConnectionGuardAMS connection(ConnectionType::Sync);
-
-    auto stmt = connection->GetStatementRaw(upd.sql);
-    for (std::size_t i = 0; i < upd.params.size(); ++i)
-    {
-        stmt->SetQVariant(i, upd.params[i]);
-    }
-
-    const bool ok = connection->ExecutePreparedUpdate(*stmt);
-    if (!ok)
-    {
-        QMessageBox::critical(this, tr("Save"), tr("Failed to save machine changes."));
+        QMessageBox::warning(this, tr("Validation"), ToUiMessage(vr, this));
         return;
     }
 
-    QMessageBox::information(this, tr("Save"), tr("Machine changes saved successfully."));
-
-    // Reset dirty state
+    if (_isNewMachine)
     {
-        ChangeTracker<MachineField>::SuspendGuard guard(_machineTracker);
-
-        _machineTracker.SetValueForced(MachineField::Name, ui->le_machineName->text());
-        _machineTracker.SetValueForced(MachineField::Number, ui->le_machineNumber->text());
-        _machineTracker.SetValueForced(MachineField::ManufacturerNumber, ui->le_manufacturerNumber->text());
-        _machineTracker.SetValueForced(MachineField::CostUnitId, ui->cb_costUnit->currentData());
-        _machineTracker.SetValueForced(MachineField::MachineTypeId, ui->cb_machineType->currentData());
-        _machineTracker.SetValueForced(MachineField::MachineLineId, ui->cb_machineLine->currentData());
-        _machineTracker.SetValueForced(MachineField::ManufacturerId, ui->cb_manufacturer->currentData());
-        _machineTracker.SetValueForced(MachineField::Info, ui->te_information->toPlainText());
-        _machineTracker.SetValueForced(MachineField::RoomId, ui->cb_room->currentData());
-        _machineTracker.SetValueForced(MachineField::Location, ui->cb_location->currentData());
+        Q_ASSERT(info.ID == 0);
+    }
+    else
+    {
+        Q_ASSERT(_currentMachineDetails.ID == info.ID);
     }
 
-    MachineInformation updated = _currentMachineDetails;
+    if (!_isNewMachine)
+    {        
+        const bool ok = _assetMgr->UpdateMachineData(info, _machineTracker);        
+        if (!ok)
+        {
+            QMessageBox::critical(this, tr("Save"), tr("Failed to save machine changes."));
+            return;
+        }
 
-    updated.MachineName = ui->le_machineName->text().trimmed().toStdString();
-    updated.MachineNumber = ui->le_machineNumber->text().trimmed().toStdString();
-    updated.ManufacturerMachineNumber = ui->le_manufacturerNumber->text().trimmed().toStdString();
-    updated.RoomID = ui->cb_room->currentData().toUInt();
-    updated.LineID = ui->cb_machineLine->currentData().toUInt();
-    updated.ManufacturerID = ui->cb_manufacturer->currentData().toUInt();
-    updated.MachineTypeID = ui->cb_machineType->currentData().toUInt();
-    updated.CostUnitID = ui->cb_costUnit->currentData().toUInt();
-    updated.locationID = ui->cb_location->currentData().toUInt();
-    updated.MoreInformation = ui->te_information->toPlainText().toStdString();
+        QMessageBox::information(this, tr("Save"), tr("Machine changes saved successfully."));
 
-    // 1) Update manager cache
-    _machineListMgr->UpdateCachedMachine(updated);
+        // Reset dirty state
+        ResetDirtyStatus();
 
-    // 2) Patching TableModel (UI)
-    _machineListModel->ApplyMachinePatch(updated);
+        // 1) Update manager cache
+        _machineListMgr->UpdateCachedMachine(info);
 
-    _currentMachineDetails = updated;
+        // 2) Patching TableModel (UI)
+        _machineListModel->ApplyMachinePatch(info);
 
-    _machineTracker.BeginSnapshot();
+        _currentMachineDetails = info;
+
+        UpdateMachineUiState();
+
+        return;
+    }
+
+    
+    auto [newId, success] = _assetMgr->AddNewMachine(info);
+
+    if (!success || newId == 0)
+    {
+        QMessageBox::critical(this, tr("Add Machine"), tr("Failed to add new machine."));
+        return;
+    }
+
+    QMessageBox::information(this, tr("Add Machine"), tr("New machine added successfully."));
+
+    info.ID = static_cast<std::int32_t>(newId);
+
+    _machineListMgr->AddNewMachineToCache(info);
+
+    _machineListModel->UpsertMachine(info);
+
+    ClearFieldsForMachine();
+    ResetDirtyStatus();
+    UpdateMachineUiState();
+
+    if (QMessageBox::information(this, tr("Add Machine"), tr("Back to main Page?"),
+                                 QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+        ui->sw_assetManager->setCurrentIndex(static_cast<int>(AssetPages::ASSET_PAGE_MAIN));
+    
+}
+
+void AssetManager::onPushNewMachine()
+{
+    _currentMachineId = 0;
+    _currentMachineDetails = MachineInformation();
+    ChangeTracker<MachineField>::SuspendGuard guard(_machineTracker);
+    ClearFieldsForMachine();
+
+    ui->pb_backMainPage->setEnabled(true);
+    
+
+    _isNewMachine = true;
+    FillMachineListComboBox(GetSettings().getCompanyLocation());
+    ResetDirtyStatus();
+
+
+    ui->sw_assetManager->setCurrentIndex(static_cast<int>(AssetPages::ASSET_PAGE_LIST));
+
     UpdateMachineUiState();
 }
 

@@ -64,6 +64,20 @@ struct MachineInformation
     std::uint32_t locationID{};
     bool isActive{}; // is_deleted
     SystemTimePoint deleted_at{};
+
+    bool empty() const
+    {
+        return ID == 0 && CostUnitID == 0 && MachineTypeID == 0 && LineID == 0 && ManufacturerID == 0 &&
+               MachineName.empty() && MachineNumber.empty() && ManufacturerMachineNumber.empty() && RoomID == 0 &&
+               MoreInformation.empty() && locationID == 0;
+    }
+
+    bool isComplete() const
+    {
+        return CostUnitID != 0 && MachineTypeID != 0 && LineID != 0 && ManufacturerID != 0 && !MachineName.empty() &&
+               !MachineNumber.empty() && !ManufacturerMachineNumber.empty() && RoomID != 0 && locationID != 0;
+    }
+
 };
 
 // tickets

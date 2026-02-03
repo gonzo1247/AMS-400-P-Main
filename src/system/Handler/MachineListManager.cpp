@@ -93,3 +93,9 @@ void MachineListManager::UpdateCachedMachine(const MachineInformation& updated)
 
     _machineVector[it->second] = updated;
 }
+
+void MachineListManager::AddNewMachineToCache(const MachineInformation& newMachine)
+{
+    _machineVector.push_back(newMachine);
+    _indexById[newMachine.ID] = _machineVector.size() - 1;
+}

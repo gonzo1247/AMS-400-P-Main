@@ -42,6 +42,11 @@ namespace detail
             return Instance().GetDiagnostics();
         }
 
+        static void Shutdown()
+        {
+            Instance().Shutdown();
+        }
+
     private:
         static DatabaseManager& Instance()
         {
@@ -62,4 +67,3 @@ struct AMSDatabaseTag
 using AMSDatabase = detail::NamedDatabase<AMSDatabaseTag>;
 
 } // namespace database
-

@@ -22,6 +22,7 @@ namespace Ui
 };
 QT_END_NAMESPACE
 
+class QCloseEvent;
 class ContractorWorkerData;
 class ContractVisit;
 
@@ -107,4 +108,5 @@ class AMSMain : public QMainWindow
 
    protected:
     void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
 };

@@ -32,6 +32,7 @@
 #include "VersionCheck.h"
 #include "oclero/qlementine/icons/QlementineIcons.hpp"
 #include "DatabaseHealth.h"
+#include "ShutdownManager.h"
 
 MainFrame::MainFrame(QApplication& application) : _isTranslationActive(false), _isStyleChangeActive(false), /*_styleMgr(std::make_unique<StyleManager>()),*/ _loadingScreenTimer(std::make_unique<QTimer>()),
 _application(application)
@@ -116,7 +117,8 @@ int MainFrame::StartFrameAndProgramm(int /*argc*/, char* /*argv*/[])
 	QCoreApplication::processEvents();		
 
 	int result = _application.exec();
-	
+
+	ShutdownManager::Instance().OnEventLoopExited(result);
 	return result;
 }
 

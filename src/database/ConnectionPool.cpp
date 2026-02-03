@@ -179,10 +179,44 @@ void ConnectionPool::StopMaintenance()
     bool expected = true;
     if (maintenanceRunning_.compare_exchange_strong(expected, false))
     {
+        maintenanceCv_.notify_all();
         if (maintenanceThread_.joinable())
             maintenanceThread_.join();
     }
     asyncExecutor_.Stop();
+    cv_.notify_all();
+}
+
+void ConnectionPool::Shutdown()
+{
+    StopMaintenance();
+
+    std::scoped_lock lock(mutex_);
+
+    auto disconnectAll = [](std::vector<std::shared_ptr<DatabaseConnection>>& connections) {
+        for (auto& connection : connections)
+        {
+            if (connection)
+                connection->Disconnect();
+        }
+        connections.clear();
+    };
+
+    disconnectAll(syncConnections_);
+    disconnectAll(asyncConnections_);
+    disconnectAll(replicaSyncConnections_);
+    disconnectAll(replicaAsyncConnections_);
+
+    while (!availableSync_.empty())
+        availableSync_.pop();
+    while (!availableAsync_.empty())
+        availableAsync_.pop();
+    while (!availableReplicaSync_.empty())
+        availableReplicaSync_.pop();
+    while (!availableReplicaAsync_.empty())
+        availableReplicaAsync_.pop();
+
+    cv_.notify_all();
 }
 
 DiagnosticsSnapshot ConnectionPool::GetDiagnostics() const
@@ -228,7 +262,12 @@ void ConnectionPool::MaintenanceLoop()
 {
     while (maintenanceRunning_.load())
     {
-        std::this_thread::sleep_for(std::chrono::seconds(config_.maintenance.pingIntervalSeconds));
+        std::unique_lock<std::mutex> maintenanceLock(maintenanceMutex_);
+        maintenanceCv_.wait_for(maintenanceLock,
+                                std::chrono::seconds(config_.maintenance.pingIntervalSeconds),
+                                [this]() { return !maintenanceRunning_.load(); });
+        if (!maintenanceRunning_.load())
+            break;
 
         std::unique_lock<std::mutex> lock(mutex_);
         auto checkConnections = [&](std::vector<std::shared_ptr<DatabaseConnection>>& connections, std::queue<std::shared_ptr<DatabaseConnection>>& availableQueue, bool replica) {
@@ -311,4 +350,3 @@ bool ConnectionPool::EnsureConnected(const std::shared_ptr<DatabaseConnection>& 
 }
 
 } // namespace database
-

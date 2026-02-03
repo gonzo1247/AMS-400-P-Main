@@ -1,5 +1,6 @@
 #include "AMSMain.h"
 
+#include <QCloseEvent>
 #include <QWindow>
 
 #include "ContractorWorkerData.h"
@@ -12,6 +13,7 @@
 #include "OperationsDashboardControlWidget.h"
 #include "RBACAccess.h"
 #include "RBACVisibilityHelper.h"
+#include "ShutdownManager.h"
 #include "Version.h"
 #include "ContractVisit.h"
 
@@ -470,4 +472,10 @@ void AMSMain::showEvent(QShowEvent* event)
 {
     // later use
     QWidget::showEvent(event);
+}
+
+void AMSMain::closeEvent(QCloseEvent* event)
+{
+    ShutdownManager::Instance().RequestShutdown("MainWindowClose");
+    QMainWindow::closeEvent(event);
 }

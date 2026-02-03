@@ -56,6 +56,7 @@ public:
 
     void StartMaintenance();
     void StopMaintenance();
+    void Shutdown();
 
     DiagnosticsSnapshot GetDiagnostics() const;
 
@@ -83,7 +84,8 @@ private:
 
     std::atomic<bool> maintenanceRunning_;
     std::thread maintenanceThread_;
+    std::condition_variable maintenanceCv_;
+    std::mutex maintenanceMutex_;
 };
 
 } // namespace database
-

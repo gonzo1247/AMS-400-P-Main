@@ -29,6 +29,7 @@ public:
     CancellationToken ExecuteAsync(ConnectionType type, std::function<void(std::shared_ptr<DatabaseConnection>)> task, bool preferReplica = false);
 
     DiagnosticsSnapshot GetDiagnostics() const;
+    void Shutdown();
 
 private:
     DatabaseManager() = default;
@@ -41,4 +42,3 @@ private:
 };
 
 } // namespace database
-

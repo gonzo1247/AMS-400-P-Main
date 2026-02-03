@@ -109,4 +109,5 @@ class AMSMain : public QMainWindow
    protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
+    bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
 };

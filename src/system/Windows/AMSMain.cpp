@@ -1,6 +1,7 @@
 #include "AMSMain.h"
 
 #include <QCloseEvent>
+#include <QMetaObject>
 #include <QWindow>
 
 #include "ContractorWorkerData.h"
@@ -16,6 +17,10 @@
 #include "ShutdownManager.h"
 #include "Version.h"
 #include "ContractVisit.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 AMSMain::AMSMain(QWidget* parent)
     : QMainWindow(parent),
@@ -478,4 +483,23 @@ void AMSMain::closeEvent(QCloseEvent* event)
 {
     ShutdownManager::Instance().RequestShutdown("MainWindowClose");
     QMainWindow::closeEvent(event);
+}
+
+bool AMSMain::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
+{
+#ifdef _WIN32
+    if (message)
+    {
+        const MSG* msg = static_cast<MSG*>(message);
+        if (msg->message == WM_CLOSE)
+        {
+            QMetaObject::invokeMethod(this, "close", Qt::QueuedConnection);
+            if (result)
+                *result = 0;
+            return true;
+        }
+    }
+#endif
+
+    return QMainWindow::nativeEvent(eventType, message, result);
 }

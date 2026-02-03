@@ -13,19 +13,35 @@
 
 #include "ThreadHelper.h"
 
-void DeleteArticleThread::run()
+std::vector<std::uint32_t> DeleteArticleThread::CollectArticleIds(QTableWidget* tableWidget, const QList<QTableWidgetSelectionRange>& ranges)
 {
-	if (!m_tableWidget)
-		return;
+	std::vector<std::uint32_t> ids;
 
-	for (const QTableWidgetSelectionRange& selectedRange : m_selectedRanges)
+	if (!tableWidget)
+		return ids;
+
+	for (const QTableWidgetSelectionRange& selectedRange : ranges)
 	{
 		for (int row = selectedRange.topRow(); row <= selectedRange.bottomRow(); ++row)
 		{
-			QVariant value = m_tableWidget->item(row, 0)->data(Qt::DisplayRole);
-			uint32_t articleID = Util::ConvertVariantToUInt32(value);
-	//		m_articleManager->DeleteArticleFromDatabase(articleID);
+			const auto item = tableWidget->item(row, 0);
+			if (!item)
+				continue;
+
+			const QVariant value = item->data(Qt::DisplayRole);
+			ids.push_back(Util::ConvertVariantToUInt32(value));
 		}
+	}
+
+	return ids;
+}
+
+void DeleteArticleThread::run()
+{
+	for (const auto articleID : m_articleIds)
+	{
+		(void)articleID;
+	//	m_articleManager->DeleteArticleFromDatabase(articleID);
 	}
 
 	emit finished();

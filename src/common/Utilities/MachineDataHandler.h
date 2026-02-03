@@ -1,5 +1,6 @@
 #pragma once
 #include <future>
+#include <shared_mutex>
 
 struct MachineTypeData;
 struct MachineManufacturerData;
@@ -64,6 +65,7 @@ class MachineDataHandler
     std::vector<MachineTypeData> _machineTypeData;
     std::unordered_map<std::uint32_t, std::string> _machineTypeNameById;
 
+    mutable std::shared_mutex _dataMutex;
     template <typename Fn>
     void RunWithRetry(const char* name, Fn&& fn);
 

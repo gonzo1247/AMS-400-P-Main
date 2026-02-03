@@ -134,7 +134,18 @@ int main(int argc, char* argv[])
 
 #ifdef _DEBUG
 		std::thread([] {
-			SqlValidator::ValidateAllStatements();
+			try
+			{
+				SqlValidator::ValidateAllStatements();
+			}
+			catch (const std::exception& ex)
+			{
+				LOG_ERROR(std::string("SqlValidator thread failed: ") + ex.what());
+			}
+			catch (...)
+			{
+				LOG_ERROR("SqlValidator thread failed: unknown exception");
+			}
 			}).detach();
 #endif
 

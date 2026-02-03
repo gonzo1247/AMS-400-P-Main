@@ -20,6 +20,7 @@
 #include <QTableWidget>
 #include <QVariant>
 #include <cstdint>
+#include <vector>
 
 #include "Util.h"
 
@@ -32,8 +33,9 @@ public:
 	explicit DeleteArticleThread(QObject* parent = nullptr) : QThread(parent) {}
 
 	void setArticleManager(ArticleManager* manager) { m_articleManager = manager; }
-	void setSelectedRanges(const QList<QTableWidgetSelectionRange>& ranges) { m_selectedRanges = ranges; }
-	void setTableWidget(QTableWidget* tableWidget) { m_tableWidget = tableWidget; }
+	void setArticleIds(const std::vector<std::uint32_t>& ids) { m_articleIds = ids; }
+	void setArticleIds(std::vector<std::uint32_t>&& ids) { m_articleIds = std::move(ids); }
+	static std::vector<std::uint32_t> CollectArticleIds(QTableWidget* tableWidget, const QList<QTableWidgetSelectionRange>& ranges);
 
 protected:
 	void run() override;
@@ -43,11 +45,9 @@ signals:
 
 private:
 	ArticleManager* m_articleManager = nullptr;
-	QList<QTableWidgetSelectionRange> m_selectedRanges;
-	QTableWidget* m_tableWidget = nullptr;
+	std::vector<std::uint32_t> m_articleIds;
 };
 
 class ThreadHelper
 {
 };
-

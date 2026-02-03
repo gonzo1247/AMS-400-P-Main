@@ -4,6 +4,9 @@
 #include <QThread>
 #include <functional>
 
+#include "Logger.h"
+#include "LoggerDefines.h"
+
 class ThreadWorker final : public QObject
 {
 	Q_OBJECT
@@ -16,11 +19,22 @@ public:
 signals:
 	void finished();  // Signal when the task is finished
 
-public slots:
+	public slots:
 	void runTask()
 	{
-		if (taskFunction)
-			taskFunction();  // Execute task
+		try
+		{
+			if (taskFunction)
+				taskFunction();  // Execute task
+		}
+		catch (const std::exception& ex)
+		{
+			LOG_ERROR(std::string("ThreadWorker task failed: ") + ex.what());
+		}
+		catch (...)
+		{
+			LOG_ERROR("ThreadWorker task failed: unknown exception");
+		}
 
 		emit finished();
 	}
@@ -28,4 +42,3 @@ public slots:
 private:
 	TaskFunction taskFunction;  // Any function
 };
-

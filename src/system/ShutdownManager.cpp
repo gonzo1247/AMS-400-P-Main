@@ -133,6 +133,7 @@ void ShutdownManager::OnProcessExit()
     const auto sinceStartMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - processStart_).count();
     const auto sinceShutdownMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - shutdownStart_).count();
     LOG_MISC("Process exit reached after {} ms ({} ms since shutdown start).", sinceStartMs, sinceShutdownMs);
+    LOG_MISC("PROCESS_EXIT_REACHED");
 }
 
 void ShutdownManager::StopEverything()
@@ -390,6 +391,7 @@ void ShutdownManager::StartWatchdogs()
             return;
 
         DumpDiagnostics("Shutdown forced quit");
+        OnProcessExit();
         std::quick_exit(EXIT_FAILURE);
     }).detach();
 }

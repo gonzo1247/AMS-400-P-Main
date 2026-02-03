@@ -1,6 +1,6 @@
 #pragma once
 #include <future>
-#include <shared_mutex>
+#include<shared_mutex>
 
 struct MachineTypeData;
 struct MachineManufacturerData;

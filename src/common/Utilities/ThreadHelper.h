@@ -33,9 +33,10 @@ public:
 	explicit DeleteArticleThread(QObject* parent = nullptr) : QThread(parent) {}
 
 	void setArticleManager(ArticleManager* manager) { m_articleManager = manager; }
-	void setArticleIds(const std::vector<std::uint32_t>& ids) { m_articleIds = ids; }
-	void setArticleIds(std::vector<std::uint32_t>&& ids) { m_articleIds = std::move(ids); }
-	static std::vector<std::uint32_t> CollectArticleIds(QTableWidget* tableWidget, const QList<QTableWidgetSelectionRange>& ranges);
+    void setArticleIds(const std::vector<std::uint32_t>& ids) { m_articleIds = ids; }
+    void setArticleIds(std::vector<std::uint32_t>&& ids) { m_articleIds = std::move(ids); }
+    static std::vector<std::uint32_t> CollectArticleIds(QTableWidget* tableWidget, const QList<QTableWidgetSelectionRange>& ranges);
+
 
 protected:
 	void run() override;
@@ -45,9 +46,10 @@ signals:
 
 private:
 	ArticleManager* m_articleManager = nullptr;
-	std::vector<std::uint32_t> m_articleIds;
+    std::vector<std::uint32_t> m_articleIds;
 };
 
 class ThreadHelper
 {
 };
+

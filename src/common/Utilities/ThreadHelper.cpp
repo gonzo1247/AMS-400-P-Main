@@ -15,34 +15,34 @@
 
 std::vector<std::uint32_t> DeleteArticleThread::CollectArticleIds(QTableWidget* tableWidget, const QList<QTableWidgetSelectionRange>& ranges)
 {
-	std::vector<std::uint32_t> ids;
+    std::vector<std::uint32_t> ids;
 
-	if (!tableWidget)
-		return ids;
+    if (!tableWidget)
+        return ids;
 
-	for (const QTableWidgetSelectionRange& selectedRange : ranges)
-	{
-		for (int row = selectedRange.topRow(); row <= selectedRange.bottomRow(); ++row)
-		{
-			const auto item = tableWidget->item(row, 0);
-			if (!item)
-				continue;
+    for (const QTableWidgetSelectionRange& selectedRange : ranges)
+    {
+        for (int row = selectedRange.topRow(); row <= selectedRange.bottomRow(); ++row)
+        {
+            const auto item = tableWidget->item(row, 0);
+            if (!item)
+                continue;
 
-			const QVariant value = item->data(Qt::DisplayRole);
-			ids.push_back(Util::ConvertVariantToUInt32(value));
-		}
-	}
+            const QVariant value = item->data(Qt::DisplayRole);
+            ids.push_back(Util::ConvertVariantToUInt32(value));
+        }
+    }
 
-	return ids;
+    return ids;
 }
 
 void DeleteArticleThread::run()
 {
-	for (const auto articleID : m_articleIds)
-	{
-		(void)articleID;
-	//	m_articleManager->DeleteArticleFromDatabase(articleID);
-	}
+    for (const auto articleID : m_articleIds)
+    {
+        (void)articleID;
+        //	m_articleManager->DeleteArticleFromDatabase(articleID);
+    }
 
 	emit finished();
 }

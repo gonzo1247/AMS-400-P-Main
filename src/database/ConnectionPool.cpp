@@ -94,6 +94,7 @@ void ConnectionPool::Configure(const PoolConfig& config)
 
     maintenanceRunning_.store(true);
     maintenanceThread_ = std::thread(&ConnectionPool::MaintenanceLoop, this);
+
     stopping_.store(false);
     LOG_WARNING("ConnectionPool reconfigure completed; Acquire resumed.");
     cv_.notify_all();
@@ -134,11 +135,11 @@ std::shared_ptr<DatabaseConnection> ConnectionPool::Acquire(ConnectionType type,
             return connection;
         }
 
-        const bool ready = cv_.wait_for(lock, std::chrono::seconds(5), [&]() {
-            return stopping_.load() || !primaryQueue.empty() || !replicaQueue.empty();
-        });
+        const bool ready = cv_.wait_for(lock, std::chrono::seconds(5), [&]()
+                                        { return stopping_.load() || !primaryQueue.empty() || !replicaQueue.empty(); });
         if (!ready)
             LOG_WARNING("ConnectionPool Acquire still waiting for an available connection.");
+
     }
 }
 
@@ -174,6 +175,7 @@ CancellationToken ConnectionPool::SubmitAsync(ConnectionType type, std::function
                 LOG_WARNING("Async query skipped because no connection was available.");
                 return;
             }
+
             try
             {
                 task(connection);
@@ -194,6 +196,7 @@ void ConnectionPool::StartMaintenance()
     {
         stopping_.store(false);
         cv_.notify_all();
+
         maintenanceThread_ = std::thread(&ConnectionPool::MaintenanceLoop, this);
     }
 }
@@ -203,6 +206,7 @@ void ConnectionPool::StopMaintenance()
     stopping_.store(true);
     LOG_WARNING("ConnectionPool stopping; releasing any waiting Acquire calls.");
     cv_.notify_all();
+
     bool expected = true;
     if (maintenanceRunning_.compare_exchange_strong(expected, false))
     {
@@ -211,16 +215,17 @@ void ConnectionPool::StopMaintenance()
             maintenanceThread_.join();
     }
     asyncExecutor_.Stop();
-    cv_.notify_all();
 }
 
+    
 void ConnectionPool::Shutdown()
 {
     StopMaintenance();
 
     std::scoped_lock lock(mutex_);
 
-    auto disconnectAll = [](std::vector<std::shared_ptr<DatabaseConnection>>& connections) {
+    auto disconnectAll = [](std::vector<std::shared_ptr<DatabaseConnection>>& connections)
+    {
         for (auto& connection : connections)
         {
             if (connection)
@@ -290,8 +295,7 @@ void ConnectionPool::MaintenanceLoop()
     while (maintenanceRunning_.load())
     {
         std::unique_lock<std::mutex> maintenanceLock(maintenanceMutex_);
-        maintenanceCv_.wait_for(maintenanceLock,
-                                std::chrono::seconds(config_.maintenance.pingIntervalSeconds),
+        maintenanceCv_.wait_for(maintenanceLock, std::chrono::seconds(config_.maintenance.pingIntervalSeconds),
                                 [this]() { return !maintenanceRunning_.load(); });
         if (!maintenanceRunning_.load())
             break;

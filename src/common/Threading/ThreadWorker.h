@@ -19,22 +19,23 @@ public:
 signals:
 	void finished();  // Signal when the task is finished
 
-	public slots:
+public slots:
 	void runTask()
 	{
-		try
-		{
-			if (taskFunction)
-				taskFunction();  // Execute task
-		}
-		catch (const std::exception& ex)
-		{
-			LOG_ERROR(std::string("ThreadWorker task failed: ") + ex.what());
-		}
-		catch (...)
-		{
-			LOG_ERROR("ThreadWorker task failed: unknown exception");
-		}
+        try
+        {
+            if (taskFunction)
+                taskFunction();  // Execute task
+        }
+        catch (const std::exception& ex)
+        {
+            LOG_ERROR(std::string("ThreadWorker task failed: ") + ex.what());
+        }
+        catch (...)
+        {
+            LOG_ERROR("ThreadWorker task failed: unknown exception");
+        }
+
 
 		emit finished();
 	}

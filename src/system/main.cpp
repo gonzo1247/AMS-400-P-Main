@@ -115,8 +115,8 @@ int main(int argc, char* argv[])
     QCoreApplication::setApplicationName("AMS");
 
 	Logger::Init();
-	ShutdownManager::Instance().Initialize(&mApplication);
-	std::atexit([]() { ShutdownManager::Instance().OnProcessExit(); });
+    ShutdownManager::Instance().Initialize(&mApplication);
+    std::atexit([]() { ShutdownManager::Instance().OnProcessExit(); });
 
 	try
 	{
@@ -133,28 +133,30 @@ int main(int argc, char* argv[])
         FileKeyProvider::Init();
 
 #ifdef _DEBUG
-		std::thread([] {
-			try
-			{
-				SqlValidator::ValidateAllStatements();
-			}
-			catch (const std::exception& ex)
-			{
-				LOG_ERROR(std::string("SqlValidator thread failed: ") + ex.what());
-			}
-			catch (...)
-			{
-				LOG_ERROR("SqlValidator thread failed: unknown exception");
-			}
-			}).detach();
+		std::thread([]
+        {
+            try
+            {
+                SqlValidator::ValidateAllStatements();
+            }
+            catch (const std::exception& ex)
+            {
+                LOG_ERROR(std::string("SqlValidator thread failed: ") + ex.what());
+            }
+            catch (...)
+            {
+                LOG_ERROR("SqlValidator thread failed: unknown exception");
+            }
+
+		}).detach();
 #endif
 
 		const QIcon appIcon(":/icons/resources/icons/AMS4.png");   // multi-size .ico: 16..256 px
 		mApplication.setWindowIcon(appIcon);									// default for all top-level windows
 
 		const int result = _mainFrame->StartFrameAndProgramm(argc, argv);
-		ShutdownManager::Instance().OnMainReturning(result);
-		return result;
+        ShutdownManager::Instance().OnMainReturning(result);
+        return result;
 	}
 	catch (const SehException& e)
 	{

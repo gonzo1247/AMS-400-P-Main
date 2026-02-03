@@ -118,7 +118,8 @@ int MainFrame::StartFrameAndProgramm(int /*argc*/, char* /*argv*/[])
 
 	int result = _application.exec();
 
-	ShutdownManager::Instance().OnEventLoopExited(result);
+    ShutdownManager::Instance().OnEventLoopExited(result);
+	
 	return result;
 }
 
